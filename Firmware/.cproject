@@ -4,7 +4,7 @@
         <cconfiguration id="com.ti.ccstudio.buildDefinitions.C2000.Debug.1818092712.883404825">
             <storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.ti.ccstudio.buildDefinitions.C2000.Debug.1818092712.883404825" moduleId="org.eclipse.cdt.core.settings" name="RAM">
                 <macros>
-                    <stringMacro name="MW_INSTALL_DIR" type="VALUE_TEXT" value="/Users/paiva/Documents/GitHub/Lovelace/Firmware/motorware_1_01_00_18"/>
+                    <stringMacro name="MW_INSTALL_DIR" type="VALUE_TEXT" value="/Users/paiva/Documents/GitHub/Lovelace2/Library/motorware_1_01_00_18"/>
                 </macros>
                 <externalSettings/>
                 <extensions>
@@ -97,7 +97,7 @@
         <cconfiguration id="com.ti.ccstudio.buildDefinitions.C2000.Debug.1818092712.883404825.1668180382">
             <storageModule buildSystemId="org.eclipse.cdt.managedbuilder.core.configurationDataProvider" id="com.ti.ccstudio.buildDefinitions.C2000.Debug.1818092712.883404825.1668180382" moduleId="org.eclipse.cdt.core.settings" name="Flash">
                 <macros>
-                    <stringMacro name="MW_INSTALL_DIR" type="VALUE_TEXT" value="/Users/paiva/Documents/GitHub/Lovelace/Firmware/motorware_1_01_00_18"/>
+                    <stringMacro name="MW_INSTALL_DIR" type="VALUE_TEXT" value="/Users/paiva/Documents/GitHub/Lovelace2/Library/motorware_1_01_00_18"/>
                 </macros>
                 <externalSettings/>
                 <extensions>
