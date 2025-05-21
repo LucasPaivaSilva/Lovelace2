@@ -44,7 +44,7 @@
 // **************************************************************************
 // the includes
 
-#include "Include/fifo.h"
+#include "fifo.h"
 #include "sw/modules/types/src/types.h"
 #ifndef uint8_t
 typedef uint_least8_t     uint8_t;

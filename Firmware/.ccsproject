@@ -3,4 +3,5 @@
 <projectOptions>
 	<deviceFamily value="C2000"/>
 	<isTargetManual value="false"/>
+	<activeTargetConfiguration value="../../Lovelace/Firmware/motorware_1_01_00_18/sw/ide/ccs/ccs5/targetConfigs/TMS320F28069_xds100v2.ccxml"/>
 </projectOptions>

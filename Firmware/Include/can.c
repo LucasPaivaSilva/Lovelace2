@@ -22,8 +22,8 @@
  *
  */
 #include <stdlib.h>
-#include "Include/can.h"
-#include "Include/fifo.h"
+#include "can.h"
+#include "fifo.h"
 
 #define NELEMS(x) (sizeof(x)/sizeof((x)[0]))
 //! \brief Define to allow protected register writes (legacy)
