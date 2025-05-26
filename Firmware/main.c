@@ -213,7 +213,7 @@ bool errorFlag_LowDCBus = 0;
 // System control
 bool flagDCBusPowered = 0;
 _iq iqTorqueRequest = _IQ(0.0);
-uint8_t torqueMod = 6;
+uint8_t torqueMod = 8;
 
 // Tasks Decimation
 uint16_t gCANRXcnt = 0;
@@ -673,7 +673,7 @@ void main(void)
             gFlag_updateRs = false;
 
             // disable PowerWarp flag
-            gMotorVars.Flag_enablePowerWarp = false;
+            gMotorVars.Flag_enablePowerWarp = true;
           }
 
         // update the global variables
@@ -1510,7 +1510,7 @@ void setupCANMailBoxes(void)
     ECAN_configMailbox(halHandle->ecanaHandle, MailBox3,  0x303, Enable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
     ECAN_configMailbox(halHandle->ecanaHandle, MailBox4,  0x304, Enable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
     ECAN_configMailbox(halHandle->ecanaHandle, MailBox5,  0x305, Enable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
-    ECAN_configMailbox(halHandle->ecanaHandle, MailBox6,  0x306, Enable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
+    ECAN_configMailbox(halHandle->ecanaHandle, MailBox6,  0x106, Enable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
     ECAN_configMailbox(halHandle->ecanaHandle, MailBox7,  6, Disable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
     ECAN_configMailbox(halHandle->ecanaHandle, MailBox8,  6, Disable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
     ECAN_configMailbox(halHandle->ecanaHandle, MailBox9,  6, Disable_Mbox, Tx_Dir, Standard_ID, DLC_8, Overwrite_on, LAMI_0, Mask_not_used, 0x00000000);
@@ -1606,7 +1606,7 @@ void readCAN(void){
                             gMotorVars.Flag_Run_Identify = true;
                         }
                         else{
-                            if (gMotorVars.Speed_krpm < _IQ(0.1)){
+                            if (gMotorVars.Speed_krpm < _IQ(0.2)){
                                 gMotorVars.Flag_Run_Identify = false;
                             }
                         }
@@ -1648,20 +1648,20 @@ void updateTasks(void)
     #ifdef ENABLE_CAN_SEND
     if (gCANTX1_Flag == 1){
         gCANTX1_Flag = 0;
-        send_CAN_message_046(halHandle->ecanaHandle, canVdcLink, (canIdcLink + 1000.0), motorTemp, igbtTemp);
+        //send_CAN_message_046(halHandle->ecanaHandle, canVdcLink, (canIdcLink + 1000.0), motorTemp, igbtTemp);
         send_CAN_floats(halHandle->ecanaHandle, MailBox3, 0x303, canIdcLink, canVdcLink);
     }
     if (gCANTX2_Flag == 1){
         gCANTX2_Flag = 0;
-        send_CAN_message_047(halHandle->ecanaHandle, (canMotorTorque + 1000.0), (canMotorOutputPower + 20000.0), (canInverterOutputPower + 20000.0), (canMotorSpeedRPM + 1000.0));
+        //send_CAN_message_047(halHandle->ecanaHandle, (canMotorTorque + 1000.0), (canMotorOutputPower + 20000.0), (canInverterOutputPower + 20000.0), (canMotorSpeedRPM + 1000.0));
         send_CAN_floats(halHandle->ecanaHandle, MailBox4, 0x304, canMotorOutputPower, canInverterOutputPower);
     }
     if (gCANTX3_Flag == 1){
         gCANTX3_Flag = 0;
         canError = createErrorByte(errorFlag_HOCD, errorFlag_OCD, errorFlag_ReverseSpeed, errorFlag_MotorOverTemperature, errorFlag_IGBTOverTemperature, 0, 0, 0);
-        send_CAN_message_048(halHandle->ecanaHandle, (gMotorVars.Flag_Run_Identify), ((uint8_t)(gCpuUsagePercentageAvg)), torqueMod, canError);
+        //send_CAN_message_048(halHandle->ecanaHandle, (gMotorVars.Flag_Run_Identify), ((uint8_t)(gCpuUsagePercentageAvg)), torqueMod, canError);
         send_CAN_floats(halHandle->ecanaHandle, MailBox5, 0x305, canMotorTorque, canMotorSpeedRPM);
-        send_CAN_byte(halHandle->ecanaHandle, MailBox6, 0x306, canError);
+        send_CAN_byte(halHandle->ecanaHandle, MailBox6, 0x106, canError);
     }
     #endif
     if (gTEMP_Flag == 1){

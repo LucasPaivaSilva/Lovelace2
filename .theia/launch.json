@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "LovelaceGEN2",
+            "type": "ccs-debug",
+            "request": "launch",
+            "projectInfo": {
+                "name": "LovelaceGEN2",
+                "resourceId": "/LovelaceGEN2"
+            },
+            "launchSettings": {
+                "coresToLoadForProjectLaunch": [
+                    "C28xx"
+                ]
+            }
+        }
+    ]
+}
