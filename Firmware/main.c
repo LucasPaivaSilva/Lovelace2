@@ -259,7 +259,6 @@ float_t canIdcLink = 0;
 float_t canVdcLink = 0;
 float_t canInverterOutputPower = 0;
 float_t canMotorOutputPower = 0;
-
 float_t canMotorTorque = 0;
 float_t canMotorSpeedRPM = 0;
 
@@ -397,7 +396,7 @@ void main(void)
     pidHandle[1] = PID_init(&pid[1],sizeof(pid[1]));
     pidHandle[2] = PID_init(&pid[2],sizeof(pid[2]));
 
-    PID_setGains(pidHandle[0],_IQ(1.0),_IQ(0.01),_IQ(0.0));
+    PID_setGains(pidHandle[0],_IQ(0.1),_IQ(0.01),_IQ(0.0));
     PID_setMinMax(pidHandle[0],-maxCurrent_pu,maxCurrent_pu);
     PID_setUi(pidHandle[0],_IQ(0.0));
     pidCntSpeed = 0;
@@ -1352,7 +1351,11 @@ void updateMotorTemperature(void)
                 MOTOR_TEMP_COEF_D;
 
     // Check if the temperature exceeds the threshold
-    if (motorTemp > 110.0) {
+    if (motorTemp > 200 || motorTemp < 0.0) {
+      // Sensor error or sensor disconnected
+      motorTemp = 1.42;
+    }
+    else if (motorTemp > 110.0) {
         errorFlag_MotorOverTemperature = 1;
         errorFlag_GlobalError = 1;
         gMotorVars.Flag_Run_Identify = false;
@@ -1396,7 +1399,11 @@ void updateIGBTTemperature(void)
                IGBT_TEMP_COEF_D + igbtTempOffset;
 
     // Check if the temperature exceeds the threshold
-    if (igbtTemp > 45.0) {
+    if (igbtTemp > 100 || igbtTemp < 0.0) {
+      // Sensor error or sensor disconnected
+      igbtTemp = 1.42;
+    }
+    else if (igbtTemp > 45.0) {
         errorFlag_IGBTOverTemperature = 1;
         errorFlag_GlobalError = 1;
         gMotorVars.Flag_Run_Identify = false;

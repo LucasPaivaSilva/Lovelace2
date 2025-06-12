@@ -149,7 +149,7 @@ extern "C" {
 //! \brief Set USER_MAX_VS_MAG = 1/SQRT(3) = 0.5774 for a pure sinewave with a peak at 100% duty cycle.  Current reconstruction will be needed for this scenario (Lab10a-x).
 //! \brief Set USER_MAX_VS_MAG = 2/3 = 0.6666 to create a trapezoidal voltage waveform.  Current reconstruction will be needed for this scenario (Lab10a-x).
 //! \brief For space vector over-modulation, see lab 10 for details on system requirements that will allow the SVM generator to go all the way to trapezoidal.
-#define USER_MAX_VS_MAG_PU        (0.5)    // Set to 0.5 if a current reconstruction technique is not used.  Look at the module svgen_current in lab10a-x for more info.
+#define USER_MAX_VS_MAG_PU        (0.5774)    // Set to 0.5 if a current reconstruction technique is not used.  Look at the module svgen_current in lab10a-x for more info.
 
 
 //! \brief DECIMATION
@@ -178,12 +178,12 @@ extern "C" {
 
 //! \brief Defines the number of controller clock ticks per speed controller clock tick
 //! \brief Relationship of controller clock rate to speed loop rate
-#define USER_NUM_CTRL_TICKS_PER_SPEED_TICK  (15)   // 15 Typical to match PWM, ex: 15KHz PWM, controller, and current loop, 1KHz speed loop
+#define USER_NUM_CTRL_TICKS_PER_SPEED_TICK  (10)   // 15 Typical to match PWM, ex: 15KHz PWM, controller, and current loop, 1KHz speed loop
 
 //! \brief Defines the number of controller clock ticks per trajectory clock tick
 //! \brief Relationship of controller clock rate to trajectory loop rate
 //! \brief Typically the same as the speed rate
-#define USER_NUM_CTRL_TICKS_PER_TRAJ_TICK   (15)   // 15 Typical to match PWM, ex: 10KHz controller & current loop, 1KHz speed loop, 1 KHz Trajectory
+#define USER_NUM_CTRL_TICKS_PER_TRAJ_TICK   (10)   // 15 Typical to match PWM, ex: 10KHz controller & current loop, 1KHz speed loop, 1 KHz Trajectory
 
 
 //! \brief LIMITS
