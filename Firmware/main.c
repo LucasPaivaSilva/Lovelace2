@@ -255,14 +255,26 @@ uint16_t DCL_value = 0;
 uint16_t CCL_value = 0;
 uint16_t battery_pack_value = 0;
 
-float_t canIdcLink = 0;
-float_t canVdcLink = 0;
-float_t canInverterOutputPower = 0;
-float_t canMotorOutputPower = 0;
-float_t canMotorTorque = 0;
-float_t canMotorSpeedRPM = 0;
-
 uint8_t canError = 0;
+
+// Structure for CAN data averaging
+typedef struct {
+    float_t sum_IdcLink;
+    float_t sum_VdcLink;
+    float_t sum_InverterOutputPower;
+    float_t sum_MotorOutputPower;
+    float_t sum_MotorTorque;
+    float_t sum_MotorSpeedRPM;
+    float_t avg_IdcLink;
+    float_t avg_VdcLink;
+    float_t avg_InverterOutputPower;
+    float_t avg_MotorOutputPower;
+    float_t avg_MotorTorque;
+    float_t avg_MotorSpeedRPM;
+    uint32_t counter;
+} CAN_AveragingData_t;
+
+CAN_AveragingData_t gCANAveraging = {0}; // Initialize all members to 0
 
 // **************************************************************************
 // the functions
@@ -1201,10 +1213,12 @@ void updateGlobalVariables(EST_Handle handle)
     gMotorVars.Torque_Nm = Torque_Nm;
   }
 
-  canMotorTorque = _IQtoF(gMotorVars.Torque_Nm);
-  canMotorSpeedRPM = _IQtoF(gMotorVars.Speed_krpm) * 1000;
+  gCANAveraging.sum_MotorTorque += _IQtoF(gMotorVars.Torque_Nm);
 
-  if (canMotorSpeedRPM < -200.0){
+  float_t inst_canMotorSpeedRPM = _IQtoF(gMotorVars.Speed_krpm) * 1000.0f;
+  gCANAveraging.sum_MotorSpeedRPM += inst_canMotorSpeedRPM;
+
+  if (inst_canMotorSpeedRPM < -200.0f){
       //errorFlag_ReverseSpeed = 1;
       //errorFlag_GlobalError = 1;
       //gMotorVars.Flag_Run_Identify = false;
@@ -1247,20 +1261,30 @@ void updateGlobalVariables(EST_Handle handle)
   // calculate vector Vs in per units
   gMotorVars.Vs = _IQsqrt(_IQmpy(gMotorVars.Vd, gMotorVars.Vd) + _IQmpy(gMotorVars.Vq, gMotorVars.Vq));
 
-  canVdcLink = _IQ24toF(gMotorVars.VdcBus_kV) * 1000;
+  float_t inst_canVdcLink = _IQ24toF(gMotorVars.VdcBus_kV) * 1000.0f;
+  gCANAveraging.sum_VdcLink += inst_canVdcLink;
 
   float_t input_power_sf = _IQtoF(gAdcData.dcBus) * (float_t)(1 * USER_IQ_FULL_SCALE_VOLTAGE_V * USER_IQ_FULL_SCALE_CURRENT_A);
 
-  canInverterOutputPower = input_power_sf * _IQtoF(_IQmpy(gPwmData.Tabc.value[0], gAdcData.I.value[0]) + _IQmpy(gPwmData.Tabc.value[1], gAdcData.I.value[1]) + _IQmpy(gPwmData.Tabc.value[2], gAdcData.I.value[2]));
+  float_t inst_canInverterOutputPower = input_power_sf * _IQtoF(_IQmpy(gPwmData.Tabc.value[0], gAdcData.I.value[0]) + _IQmpy(gPwmData.Tabc.value[1], gAdcData.I.value[1]) + _IQmpy(gPwmData.Tabc.value[2], gAdcData.I.value[2]));
+  gCANAveraging.sum_InverterOutputPower += inst_canInverterOutputPower;
 
   // Equations for motor power
-
-  canMotorOutputPower = _IQtoF(gMotorVars.Torque_Nm) * _IQtoF(gMotorVars.Speed_krpm) * (float_t)((MATH_TWO_PI * 1000.0) / 60.0);
+  gCANAveraging.sum_MotorOutputPower += (_IQtoF(gMotorVars.Torque_Nm) * _IQtoF(gMotorVars.Speed_krpm) * (float_t)((MATH_TWO_PI * 1000.0) / 60.0));
 
   // Equation for DClink input current (estimative)
+  float_t inst_canIdcLink;
+  if (inst_canVdcLink != 0.0f)
+  {
+    inst_canIdcLink = inst_canInverterOutputPower / inst_canVdcLink;
+  }
+  else
+  {
+    inst_canIdcLink = 0.0f; // Avoid division by zero
+  }
+  gCANAveraging.sum_IdcLink += inst_canIdcLink;
 
-  canIdcLink = (canInverterOutputPower)/canVdcLink;
-
+  gCANAveraging.counter++; // Increment counter for averaging
 
   return;
 } // end of updateGlobalVariables() function
@@ -1651,25 +1675,65 @@ void updateTasks(void)
         gCANRX_Flag = 0;
         readCAN();
     }
+
     #ifdef ENABLE_CAN_SEND
+    // Calculate averages and reset sums only when the first 20Hz CAN task (gCANTX3_Flag) is due.
+    // This ensures averages are calculated once per 50ms period for all 20Hz tasks.
+    // This assumes gCANTX3_Flag is reliably the first to be set in a 20Hz cycle.
+    if (gCANTX3_Flag)
+    {
+        if (gCANAveraging.counter > 0)
+        {
+            gCANAveraging.avg_IdcLink = gCANAveraging.sum_IdcLink / gCANAveraging.counter;
+            gCANAveraging.avg_VdcLink = gCANAveraging.sum_VdcLink / gCANAveraging.counter;
+            gCANAveraging.avg_InverterOutputPower = gCANAveraging.sum_InverterOutputPower / gCANAveraging.counter;
+            gCANAveraging.avg_MotorOutputPower = gCANAveraging.sum_MotorOutputPower / gCANAveraging.counter;
+            gCANAveraging.avg_MotorTorque = gCANAveraging.sum_MotorTorque / gCANAveraging.counter;
+            gCANAveraging.avg_MotorSpeedRPM = gCANAveraging.sum_MotorSpeedRPM / gCANAveraging.counter;
+
+            // Reset sums and counter for the next averaging period
+            gCANAveraging.sum_IdcLink = 0.0f;
+            gCANAveraging.sum_VdcLink = 0.0f;
+            gCANAveraging.sum_InverterOutputPower = 0.0f;
+            gCANAveraging.sum_MotorOutputPower = 0.0f;
+            gCANAveraging.sum_MotorTorque = 0.0f;
+            gCANAveraging.sum_MotorSpeedRPM = 0.0f;
+            gCANAveraging.counter = 0;
+        }
+        else
+        {
+            // If gCANAveraging.counter is 0, ensure averages are reset to 0.0f
+            // This handles the case where CAN tasks run before any updateGlobalVariables call.
+            gCANAveraging.avg_IdcLink = 0.0f;
+            gCANAveraging.avg_VdcLink = 0.0f;
+            gCANAveraging.avg_InverterOutputPower = 0.0f;
+            gCANAveraging.avg_MotorOutputPower = 0.0f;
+            gCANAveraging.avg_MotorTorque = 0.0f;
+            gCANAveraging.avg_MotorSpeedRPM = 0.0f;
+        }
+    }
+
     if (gCANTX1_Flag == 1){
         gCANTX1_Flag = 0;
-        send_CAN_floats(halHandle->ecanaHandle, MailBox3, 0x303, canIdcLink, canVdcLink);
-        send_CAN_floats(halHandle->ecanaHandle, MailBox2, 0x302, igbtTemp, motorTemp);
+        // Send averaged IdcLink and VdcLink.
+        // igbtTemp and motorTemp are updated by their own tasks and not part of this averaging scheme.
+        send_CAN_floats(halHandle->ecanaHandle, MailBox3, 0x303, gCANAveraging.avg_IdcLink, gCANAveraging.avg_VdcLink);
+        send_CAN_floats(halHandle->ecanaHandle, MailBox2, 0x302, igbtTemp, motorTemp); // motorTemp & igbtTemp are instantaneous
     }
     if (gCANTX2_Flag == 1){
         gCANTX2_Flag = 0;
-        send_CAN_floats(halHandle->ecanaHandle, MailBox4, 0x304, canMotorOutputPower, canInverterOutputPower);
-        //send_CAN_floats(halHandle->ecanaHandle, MailBox1, 0x301, 42.42, 12.0);
+        // Send averaged power values
+        send_CAN_floats(halHandle->ecanaHandle, MailBox4, 0x304, gCANAveraging.avg_MotorOutputPower, gCANAveraging.avg_InverterOutputPower);
     }
     if (gCANTX3_Flag == 1){
         gCANTX3_Flag = 0;
         canError = createErrorByte(errorFlag_HOCD, errorFlag_OCD, errorFlag_ReverseSpeed, errorFlag_MotorOverTemperature, errorFlag_IGBTOverTemperature, 0, 0, 0);
-        //send_CAN_message_048(halHandle->ecanaHandle, (gMotorVars.Flag_Run_Identify), ((uint8_t)(gCpuUsagePercentageAvg)), torqueMod, canError);
-        send_CAN_floats(halHandle->ecanaHandle, MailBox5, 0x305, canMotorTorque, canMotorSpeedRPM);
+        // Send averaged motor torque and speed
+        send_CAN_floats(halHandle->ecanaHandle, MailBox5, 0x305, gCANAveraging.avg_MotorTorque, gCANAveraging.avg_MotorSpeedRPM);
         send_CAN_byte(halHandle->ecanaHandle, MailBox15, 0x106, canError);
     }
     #endif
+
     if (gTEMP_Flag == 1){
         gTEMP_Flag = 0;
         updateMotorTemperature();
@@ -1679,6 +1743,3 @@ void updateTasks(void)
 
 //@} //defgroup
 // end of file
-
-
-
