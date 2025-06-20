@@ -203,6 +203,7 @@ uint16_t immediateOverCurrentCountB = 0;
 uint16_t immediateOverCurrentCountC = 0;
 
 bool errorFlag_GlobalError = 0;
+bool errorFlag_OverVoltage = 0;
 bool errorFlag_MotorOverTemperature = 0;
 bool errorFlag_IGBTOverTemperature = 0;
 bool errorFlag_ReverseSpeed = 0;
@@ -756,9 +757,18 @@ interrupt void mainISR(void)
       }
   }
 
-  if (_IQmpy(gAdcData.dcBus,_IQ(USER_IQ_FULL_SCALE_VOLTAGE_V/1000.0)) > _IQ(0.080)){
+  _iq busVoltage = _IQmpy(gAdcData.dcBus,_IQ(USER_IQ_FULL_SCALE_VOLTAGE_V/1000.0));
+
+  if (busVoltage > _IQ(0.080)){
+    if (busVoltage > _IQ(0.190)){
+      errorFlag_OverVoltage = true;
+      errorFlag_GlobalError = 1;
+      gMotorVars.Flag_Run_Identify = false;
+    }
+    else {
       flagDCBusPowered = 1;
       errorFlag_LowDCBus = false;
+    }
   }
   else{
       flagDCBusPowered = 0;
@@ -1660,7 +1670,7 @@ void readCAN(void){
 
                     debugFloat = _IQtoF(speed_krpm_stable) * 1000.0f;
 
-                    if ((rtd_flag == 1) && (errorFlag_OCD == 0) && (errorFlag_HOCD == 0) && (errorFlag_IGBTOverTemperature == 0) && (errorFlag_ReverseSpeed == 0)){
+                    if ((rtd_flag == 1) && (errorFlag_OCD == 0) && (errorFlag_HOCD == 0) && (errorFlag_OverVoltage == 0) && (errorFlag_IGBTOverTemperature == 0) && (errorFlag_ReverseSpeed == 0)){
 
                         if ((accel_value > 0)){
                             gMotorVars.Flag_Run_Identify = true;
@@ -1758,7 +1768,7 @@ void updateTasks(void)
     }
     if (gCANTX3_Flag == 1){
         gCANTX3_Flag = 0;
-        canError = createErrorByte(errorFlag_HOCD, errorFlag_OCD, errorFlag_ReverseSpeed, errorFlag_MotorOverTemperature, errorFlag_IGBTOverTemperature, 0, 0, 0);
+        canError = createErrorByte(errorFlag_HOCD, errorFlag_OCD, errorFlag_ReverseSpeed, errorFlag_MotorOverTemperature, errorFlag_IGBTOverTemperature, errorFlag_OverVoltage, 0, 0);
         // Send averaged motor torque and speed
         send_CAN_floats(halHandle->ecanaHandle, MailBox5, 0x305, gCANAveraging.avg_MotorTorque, gCANAveraging.avg_MotorSpeedRPM);
         send_CAN_byte(halHandle->ecanaHandle, MailBox15, 0x106, canError);
