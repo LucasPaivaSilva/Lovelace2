@@ -210,6 +210,19 @@ bool errorFlag_OCD = 0;
 bool errorFlag_HOCD = 0;
 bool errorFlag_LowDCBus = 0;
 
+// Debug Flags
+int debugCounter = 0;
+float_t debugFloat = 0;
+
+
+// Stable Speed
+_iq speed_krpm_stable = _IQ(0.0); // Added for speed filtering
+// Define a threshold for speed jumps to detect outliers (e.g., 1000 RPM)
+// This value needs to be tuned based on the motor's characteristics and expected behavior.
+// A jump of 1000 RPM in a single ISR tick is highly unlikely for most motors.
+#define MAX_SPEED_JUMP_KRPM _IQ(1.0) // 1.0 krpm = 1000 RPM
+
+
 // System control
 bool flagDCBusPowered = 0;
 _iq iqTorqueRequest = _IQ(0.0);
@@ -808,6 +821,21 @@ interrupt void mainISR(void)
 
       // get Idq from estimator to avoid sin and cos
       EST_getIdq_pu(estHandle,&gIdq_pu);
+
+      // --- Start of Speed Outlier Filtering Logic ---
+      // Check for sudden, unrealistic jumps in speed
+      _iq speed_diff = _IQabs(gMotorVars.Speed_krpm - speed_krpm_stable);
+
+      if (speed_diff > MAX_SPEED_JUMP_KRPM) {
+          // If the difference is too large, it's likely an outlier.
+          // Do NOT update gMotorVars.Speed_krpm_stable with the current gMotorVars.Speed_krpm.
+          // Keep gMotorVars.Speed_krpm_stable at its previous, more reliable value.
+          // The gMotorVars.Speed_krpm itself still holds the raw estimator output.
+      } else {
+          // If the change is within acceptable limits, update the stable speed.
+          speed_krpm_stable = gMotorVars.Speed_krpm;
+      }
+      // --- End of Speed Outlier Filtering Logic ---
   }
   ///////////////////////////////////////////////////////////////
 
@@ -1630,13 +1658,16 @@ void readCAN(void){
                         speedMode = false;
                     }
 
+                    debugFloat = _IQtoF(speed_krpm_stable) * 1000.0f;
+
                     if ((rtd_flag == 1) && (errorFlag_OCD == 0) && (errorFlag_HOCD == 0) && (errorFlag_IGBTOverTemperature == 0) && (errorFlag_ReverseSpeed == 0)){
 
                         if ((accel_value > 0)){
                             gMotorVars.Flag_Run_Identify = true;
                         }
                         else{
-                            if (gMotorVars.Speed_krpm < _IQ(0.2)){
+                            if (speed_krpm_stable < _IQ(0.2) && speed_krpm_stable > _IQ(0.0)){
+                                debugCounter++;
                                 gMotorVars.Flag_Run_Identify = false;
                             }
                         }
