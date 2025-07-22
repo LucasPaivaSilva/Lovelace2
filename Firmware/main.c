@@ -214,6 +214,7 @@ bool errorFlag_LowDCBus = 0;
 // Debug Flags
 int debugCounter = 0;
 float_t debugFloat = 0;
+bool errorDebug = 0;
 
 
 // Stable Speed
@@ -762,15 +763,16 @@ interrupt void mainISR(void)
   if (busVoltage > _IQ(0.080)){
     if (busVoltage > _IQ(0.190)){
       errorFlag_OverVoltage = true;
-      errorFlag_GlobalError = 1;
       gMotorVars.Flag_Run_Identify = false;
     }
     else {
       flagDCBusPowered = 1;
+      errorFlag_OverVoltage = false;
       errorFlag_LowDCBus = false;
     }
   }
   else{
+    errorFlag_OverVoltage = false;
       flagDCBusPowered = 0;
       gMotorVars.Flag_Run_Identify = false;
       errorFlag_LowDCBus = true;
@@ -894,7 +896,7 @@ interrupt void mainISR(void)
       }
       else{
           if ((regen_brake_flag == 1) && (iqTorqueRequest == _IQ(0.0)) && (gMotorVars.Speed_krpm > _IQ(0.5)) && (torqueRequestDisable==0)){
-              refValue = _IQmpy(Iq_Max_pu, _IQ(-0.4));
+              refValue = _IQmpy(Iq_Max_pu, _IQ(-0.3));
           }
           else{
               refValue = _IQmpy(Iq_Max_pu, iqTorqueRequest);
@@ -1672,15 +1674,19 @@ void readCAN(void){
 
                     if ((rtd_flag == 1) && (errorFlag_OCD == 0) && (errorFlag_HOCD == 0) && (errorFlag_OverVoltage == 0) && (errorFlag_IGBTOverTemperature == 0) && (errorFlag_ReverseSpeed == 0)){
 
-                        if ((accel_value > 0)){
+                        if ((accel_value > 0) || (brake_value > 0)){
                             gMotorVars.Flag_Run_Identify = true;
                         }
                         else{
+                          gMotorVars.Flag_Run_Identify = false; 
+                        }
+                        /*else{
                             if (speed_krpm_stable < _IQ(0.2) && speed_krpm_stable > _IQ(0.0)){
                                 debugCounter++;
+                                errorDebug = true;
                                 gMotorVars.Flag_Run_Identify = false;
                             }
-                        }
+                        */
                     }
                     else{
                         gMotorVars.Flag_Run_Identify = false;
@@ -1768,7 +1774,7 @@ void updateTasks(void)
     }
     if (gCANTX3_Flag == 1){
         gCANTX3_Flag = 0;
-        canError = createErrorByte(errorFlag_HOCD, errorFlag_OCD, errorFlag_ReverseSpeed, errorFlag_MotorOverTemperature, errorFlag_IGBTOverTemperature, errorFlag_OverVoltage, 0, 0);
+        canError = createErrorByte(errorFlag_HOCD, errorFlag_OCD, errorFlag_ReverseSpeed, errorFlag_MotorOverTemperature, errorFlag_IGBTOverTemperature, errorFlag_OverVoltage, errorDebug, 0);
         // Send averaged motor torque and speed
         send_CAN_floats(halHandle->ecanaHandle, MailBox5, 0x305, gCANAveraging.avg_MotorTorque, gCANAveraging.avg_MotorSpeedRPM);
         send_CAN_byte(halHandle->ecanaHandle, MailBox15, 0x106, canError);
